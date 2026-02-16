@@ -1,4 +1,8 @@
-import { Award } from 'lucide-react';
+import { Award, Shield } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 
 interface SettingsViewProps {
   profile: { firstName: string; lastName: string; adeUrl: string };
@@ -7,7 +11,19 @@ interface SettingsViewProps {
   onSignOut: () => void;
 }
 
-const SettingsView = ({ profile, stats, onUpdateProfile, onSignOut }: SettingsViewProps) => (
+const SettingsView = ({ profile, stats, onUpdateProfile, onSignOut }: SettingsViewProps) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' }).then(({ data }) => {
+      setIsAdmin(!!data);
+    });
+  }, [user]);
+
+  return (
   <div className="space-y-6 page-enter">
     <h2 className="text-3xl font-bold tracking-tight">Profil</h2>
     <div className="bg-gradient-to-br from-primary to-blue-700 p-8 rounded-3xl shadow-2xl shadow-primary/20 flex flex-col items-center text-center relative overflow-hidden">
@@ -42,6 +58,15 @@ const SettingsView = ({ profile, stats, onUpdateProfile, onSignOut }: SettingsVi
       </div>
     </div>
 
+    {isAdmin && (
+      <button
+        onClick={() => navigate('/admin')}
+        className="w-full py-4 font-bold text-sm bg-card rounded-xl border border-border flex items-center justify-center gap-2 text-foreground hover:border-primary/50 transition-colors"
+      >
+        <Shield size={18} className="text-primary" /> Panel Administration
+      </button>
+    )}
+
     <button
       onClick={onSignOut}
       className="w-full py-4 text-destructive font-bold text-sm bg-destructive/10 rounded-xl border border-destructive/20 active:scale-95 transition-transform hover:bg-destructive/20"
@@ -49,6 +74,7 @@ const SettingsView = ({ profile, stats, onUpdateProfile, onSignOut }: SettingsVi
       Se déconnecter
     </button>
   </div>
-);
+  );
+};
 
 export default SettingsView;
