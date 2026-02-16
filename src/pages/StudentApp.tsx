@@ -22,6 +22,7 @@ const StudentApp = () => {
 
   // Profile
   const [profile, setProfile] = useState({ firstName: '', lastName: '', adeUrl: DEFAULT_ADE });
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [quickNote, setQuickNote] = useState('');
 
   // Academic
@@ -47,21 +48,25 @@ const StudentApp = () => {
       const pending = localStorage.getItem('geii_pending_profile');
       if (pending) {
         const p = JSON.parse(pending);
-        await supabase.from('profiles').update({
+        // Use upsert in case the trigger already created a bare profile
+        await supabase.from('profiles').upsert({
+          user_id: user.id,
           first_name: p.first_name,
           last_name: p.last_name,
           ade_url: p.ade_url,
-        }).eq('user_id', user.id);
+        }, { onConflict: 'user_id' });
         setProfile({ firstName: p.first_name, lastName: p.last_name, adeUrl: p.ade_url });
+        setProfileLoaded(true);
         localStorage.removeItem('geii_pending_profile');
         return;
       }
 
       const { data } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
-      if (data && data.first_name) {
-        setProfile({ firstName: data.first_name, lastName: data.last_name || '', adeUrl: data.ade_url || DEFAULT_ADE });
+      if (data) {
+        setProfile({ firstName: data.first_name || (user.email?.split('@')[0] ?? ''), lastName: data.last_name || '', adeUrl: data.ade_url || DEFAULT_ADE });
         setQuickNote(data.quick_note || '');
       }
+      setProfileLoaded(true);
     };
 
     const loadGrades = async () => {
@@ -231,8 +236,7 @@ const StudentApp = () => {
     }, { onConflict: 'user_id,semester' });
   }, [history, user]);
 
-  if (!profile.firstName) {
-    // Check if we need onboarding
+  if (!profileLoaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
