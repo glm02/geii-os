@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Zap, ArrowRight, HelpCircle, Info } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
 import { DEFAULT_ADE } from '@/lib/constants';
 
 const AuthPage = () => {
@@ -16,26 +15,6 @@ const AuthPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    setLoading(true);
-
-    if (isLogin) {
-      const { error } = await signIn(email, password);
-      if (error) setError(error.message);
-    } else {
-      const { error } = await signUp(email, password);
-      if (error) {
-        setError(error.message);
-      } else {
-        setSuccess('Vérifie ton email pour confirmer ton compte !');
-      }
-    }
-    setLoading(false);
-  };
 
   const handleSignUpAndProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,8 +35,6 @@ const AuthPage = () => {
       if (error) {
         setError(error.message);
       } else {
-        // We store the profile data in localStorage temporarily, 
-        // it'll be saved to DB after email confirmation
         localStorage.setItem('geii_pending_profile', JSON.stringify({
           first_name: firstName,
           last_name: lastName,
@@ -71,17 +48,19 @@ const AuthPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center px-6 py-10 relative overflow-hidden">
-      <div className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[100px]" />
+      <div className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] bg-primary/15 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[300px] h-[300px] bg-primary/10 rounded-full blur-[80px]" />
+
       <div className="relative z-10 space-y-8 max-w-md mx-auto w-full">
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-primary/30">
-            <Zap size={32} className="text-primary-foreground" />
+          <div className="w-20 h-20 bg-gradient-to-br from-primary to-blue-700 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-primary/30 rotate-3">
+            <Zap size={36} className="text-primary-foreground -rotate-3" />
           </div>
           <h1 className="text-4xl font-bold tracking-tight">
             {isLogin ? 'Connexion' : 'Bienvenue'}<br />
             <span className="text-primary">GEII OS</span>
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {isLogin ? 'Connecte-toi à ton espace étudiant.' : 'Ton assistant étudiant personnel.'}
           </p>
         </div>
@@ -93,14 +72,14 @@ const AuthPage = () => {
                 value={firstName}
                 onChange={e => setFirstName(e.target.value)}
                 placeholder="Ton Prénom"
-                className="w-full bg-transparent p-4 placeholder-foreground/30 outline-none"
+                className="w-full bg-transparent p-4 placeholder-foreground/30 outline-none text-sm"
               />
               <div className="h-[1px] bg-foreground/5 mx-4" />
               <input
                 value={lastName}
                 onChange={e => setLastName(e.target.value)}
                 placeholder="Ton Nom"
-                className="w-full bg-transparent p-4 placeholder-foreground/30 outline-none"
+                className="w-full bg-transparent p-4 placeholder-foreground/30 outline-none text-sm"
               />
             </div>
           )}
@@ -111,7 +90,7 @@ const AuthPage = () => {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="Email"
-              className="w-full bg-transparent p-4 placeholder-foreground/30 outline-none"
+              className="w-full bg-transparent p-4 placeholder-foreground/30 outline-none text-sm"
               required
             />
             <div className="h-[1px] bg-foreground/5 mx-4" />
@@ -120,7 +99,7 @@ const AuthPage = () => {
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="Mot de passe"
-              className="w-full bg-transparent p-4 placeholder-foreground/30 outline-none"
+              className="w-full bg-transparent p-4 placeholder-foreground/30 outline-none text-sm"
               required
               minLength={6}
             />
@@ -133,7 +112,7 @@ const AuthPage = () => {
                   value={adeUrl}
                   onChange={e => setAdeUrl(e.target.value)}
                   placeholder="Lien Export Agenda (ADE) - optionnel"
-                  className="w-full bg-transparent p-4 placeholder-foreground/30 outline-none text-sm"
+                  className="w-full bg-transparent p-4 placeholder-foreground/30 outline-none text-xs"
                 />
                 <button type="button" onClick={() => setShowHelp(!showHelp)} className="p-3 text-primary">
                   <HelpCircle size={20} />

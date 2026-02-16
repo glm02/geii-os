@@ -11,12 +11,15 @@ import AgendaView from '@/components/views/AgendaView';
 import LifeView from '@/components/views/LifeView';
 import SettingsView from '@/components/views/SettingsView';
 import GradeEditorModal from '@/components/GradeEditorModal';
+import TimeGreeting from '@/components/TimeGreeting';
 import type { ModuleConfig } from '@/lib/constants';
-import { Calendar, X } from 'lucide-react';
+import { Calendar, X, Shield, Info, AlertTriangle, CheckCircle } from 'lucide-react';
 import AgendaList from '@/components/AgendaList';
+import { useNavigate } from 'react-router-dom';
 
 const StudentApp = () => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [view, setView] = useState<ViewId>('HOME');
   const [showFullAgenda, setShowFullAgenda] = useState(false);
 
@@ -40,15 +43,16 @@ const StudentApp = () => {
   // Announcements
   const [announcements, setAnnouncements] = useState<{ text: string; type: string }[]>([]);
 
+  // Admin
+  const [isAdmin, setIsAdmin] = useState(false);
+
   // Load profile from DB
   useEffect(() => {
     if (!user) return;
     const loadProfile = async () => {
-      // Check for pending profile data from signup first
       const pending = localStorage.getItem('geii_pending_profile');
       if (pending) {
         const p = JSON.parse(pending);
-        // Use upsert in case the trigger already created a bare profile
         await supabase.from('profiles').upsert({
           user_id: user.id,
           first_name: p.first_name,
@@ -110,11 +114,17 @@ const StudentApp = () => {
       }
     };
 
+    const checkAdmin = async () => {
+      const { data } = await supabase.rpc('has_role', { _user_id: user.id, _role: 'admin' });
+      setIsAdmin(!!data);
+    };
+
     loadProfile();
     loadGrades();
     loadAbsences();
     loadTaskStatus();
     loadHistory();
+    checkAdmin();
 
     // Listen to announcements
     const channel = supabase
@@ -126,7 +136,6 @@ const StudentApp = () => {
       })
       .subscribe();
 
-    // Initial load announcements
     supabase.from('announcements').select('*').order('created_at', { ascending: false }).then(({ data }) => {
       if (data) setAnnouncements(data.map(a => ({ text: a.text, type: a.type })));
     });
@@ -176,7 +185,6 @@ const StudentApp = () => {
     if (!selectedModule || !user) return;
     const nm = { ...s2Grades, [selectedModule.id]: grades };
     setS2Grades(nm);
-    // Sync to DB: delete all grades for this module, re-insert
     await supabase.from('grades').delete().eq('user_id', user.id).eq('module_id', selectedModule.id);
     if (grades.length > 0) {
       await supabase.from('grades').insert(
@@ -213,7 +221,6 @@ const StudentApp = () => {
   const updateQuickNote = useCallback(async (note: string) => {
     if (!user) return;
     setQuickNote(note);
-    // Debounced save handled by profile update
     await supabase.from('profiles').update({ quick_note: note }).eq('user_id', user.id);
   }, [user]);
 
@@ -231,6 +238,22 @@ const StudentApp = () => {
       ue2_avg: newHist[semKey]?.[ue2Key] ? parseFloat(newHist[semKey][ue2Key]) : null,
     }, { onConflict: 'user_id,semester' });
   }, [history, user]);
+
+  const getAnnouncementIcon = (type: string) => {
+    switch (type) {
+      case 'WARNING': return <AlertTriangle size={16} />;
+      case 'SUCCESS': return <CheckCircle size={16} />;
+      default: return <Info size={16} />;
+    }
+  };
+
+  const getAnnouncementStyle = (type: string) => {
+    switch (type) {
+      case 'WARNING': return 'bg-warning/10 border-warning/20 text-warning';
+      case 'SUCCESS': return 'bg-success/10 border-success/20 text-success';
+      default: return 'bg-primary/10 border-primary/20 text-primary';
+    }
+  };
 
   if (!profileLoaded) {
     return (
@@ -265,26 +288,37 @@ const StudentApp = () => {
         </div>
       )}
 
-      <header className="p-6 pt-12 flex justify-between items-center bg-gradient-to-b from-primary/10 to-transparent sticky top-0 z-40 backdrop-blur-md">
-        <div>
-          <div className="text-xs font-bold text-primary mb-1 uppercase tracking-wider">Espace Étudiant</div>
-          <h1 className="text-3xl font-bold tracking-tight">Bonjour {profile.firstName}</h1>
-        </div>
-        <div
-          onClick={() => setView('SETTINGS')}
-          className="w-10 h-10 rounded-full bg-card border border-foreground/10 flex items-center justify-center font-bold text-sm cursor-pointer hover:border-foreground/30 transition-colors"
-        >
-          {profile.firstName[0]?.toUpperCase()}
+      <header className="p-6 pt-12 flex justify-between items-center bg-gradient-to-b from-primary/8 to-transparent sticky top-0 z-40 backdrop-blur-md border-b border-foreground/5">
+        <TimeGreeting name={profile.firstName} />
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/admin')}
+              className="w-9 h-9 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive hover:bg-destructive/20 transition-colors"
+              title="Administration"
+            >
+              <Shield size={16} />
+            </button>
+          )}
+          <div
+            onClick={() => setView('SETTINGS')}
+            className="w-10 h-10 rounded-full bg-card border border-foreground/10 flex items-center justify-center font-bold text-sm cursor-pointer hover:border-foreground/30 transition-colors"
+          >
+            {profile.firstName[0]?.toUpperCase()}
+          </div>
         </div>
       </header>
 
-      <main className="px-4 space-y-8">
+      <main className="px-4 space-y-6 mt-4">
+        {/* Announcements */}
         {announcements.length > 0 && (
-          <div className="bg-primary text-primary-foreground p-4 rounded-2xl flex items-start gap-3 shadow-lg shadow-primary/20 mb-4">
-            <div>
-              <div className="font-bold text-sm uppercase tracking-wide mb-1">Info Admin</div>
-              <div className="text-sm opacity-90 leading-relaxed">{announcements[0].text}</div>
-            </div>
+          <div className="space-y-2">
+            {announcements.slice(0, 2).map((a, i) => (
+              <div key={i} className={`p-4 rounded-2xl flex items-start gap-3 border ${getAnnouncementStyle(a.type)}`}>
+                <div className="mt-0.5">{getAnnouncementIcon(a.type)}</div>
+                <p className="text-sm text-foreground leading-relaxed">{a.text}</p>
+              </div>
+            ))}
           </div>
         )}
 
@@ -296,6 +330,9 @@ const StudentApp = () => {
             quickNote={quickNote}
             onNoteChange={updateQuickNote}
             onViewChange={setView}
+            gradesMap={s2Grades}
+            isAdmin={isAdmin}
+            onAdminClick={() => navigate('/admin')}
           />
         )}
 

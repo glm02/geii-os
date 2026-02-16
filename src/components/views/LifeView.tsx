@@ -1,5 +1,6 @@
 import { Utensils, Train, ArrowUpRight, ChevronRight, GraduationCap, FileText, Calendar, Mail, Paperclip } from 'lucide-react';
 import { USEFUL_LINKS, LINKS } from '@/lib/constants';
+import CustomLinks from '@/components/CustomLinks';
 
 const iconMap: Record<string, typeof GraduationCap> = {
   GraduationCap, FileText, Calendar, Mail, Paperclip, Train,
@@ -12,7 +13,7 @@ const CrousWidget = () => {
   return (
     <a href={LINKS.CROUS} target="_blank" rel="noopener noreferrer" className="fintech-card p-5 border border-foreground/5 flex flex-col justify-between active:scale-95 transition-transform hover:bg-card-hover">
       <div className="flex justify-between items-start">
-        <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-500">
+        <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center text-warning">
           <Utensils size={20} />
         </div>
         <span className={`text-[10px] px-2 py-1 rounded-full font-bold ${isOpen ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
@@ -32,7 +33,7 @@ const CrousWidget = () => {
 const TrafficWidget = () => (
   <a href={LINKS.TCL} target="_blank" rel="noopener noreferrer" className="fintech-card p-5 border border-foreground/5 flex flex-col justify-between active:scale-95 transition-transform hover:bg-card-hover">
     <div className="flex justify-between items-start">
-      <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+      <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
         <Train size={20} />
       </div>
       <div className="flex gap-1.5">
@@ -58,6 +59,9 @@ const LifeView = () => (
         <TrafficWidget />
       </div>
     </div>
+
+    <CustomLinks />
+
     <div>
       <h2 className="text-3xl font-bold mb-6 tracking-tight">Liens Utiles</h2>
       <div className="grid grid-cols-1 gap-3">

@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Target } from 'lucide-react';
+import { Target, Search, Archive } from 'lucide-react';
 import { MODULES_CONFIG_S2 } from '@/lib/constants';
 import { type Grade } from '@/lib/helpers';
 import type { ModuleConfig } from '@/lib/constants';
 import UESection from '@/components/UESection';
-import { Archive } from 'lucide-react';
+import AbsenceAlert from '@/components/AbsenceAlert';
+import GradeExport from '@/components/GradeExport';
+import GPACalculator from '@/components/GPACalculator';
 
 interface NotesViewProps {
   semester: number;
@@ -13,7 +15,7 @@ interface NotesViewProps {
   setVisibleUEs: (v: { 21: boolean; 22: boolean }) => void;
   s2Grades: Record<string, Grade[]>;
   absences: Record<string, number>;
-  stats: { avg21: string | null; avg22: string | null };
+  stats: { avg21: string | null; avg22: string | null; global?: string | null };
   history: Record<string, Record<string, string>>;
   onModuleClick: (mod: ModuleConfig) => void;
   onAbsenceUpdate: (modId: string, delta: number) => void;
@@ -80,64 +82,88 @@ const TargetSimulator = () => {
   );
 };
 
-const NotesView = ({ semester, setSemester, visibleUEs, setVisibleUEs, s2Grades, absences, stats, history, onModuleClick, onAbsenceUpdate, onHistoryUpdate }: NotesViewProps) => (
-  <div className="space-y-6 page-enter">
-    <SemesterSelector current={semester} onChange={setSemester} />
-    {semester === 2 ? (
-      <div className="space-y-6">
-        <div className="flex gap-2 mb-2">
-          <button
-            onClick={() => setVisibleUEs({ ...visibleUEs, 21: !visibleUEs[21] })}
-            className={`flex-1 py-3 rounded-xl text-xs font-bold border transition-all ${
-              visibleUEs[21] ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20' : 'bg-card text-muted-foreground border-border'
-            }`}
-          >
-            UE21 • Concevoir
-          </button>
-          <button
-            onClick={() => setVisibleUEs({ ...visibleUEs, 22: !visibleUEs[22] })}
-            className={`flex-1 py-3 rounded-xl text-xs font-bold border transition-all ${
-              visibleUEs[22] ? 'bg-foreground text-background border-foreground shadow-lg' : 'bg-card text-muted-foreground border-border'
-            }`}
-          >
-            UE22 • Vérifier
-          </button>
-        </div>
+const NotesView = ({ semester, setSemester, visibleUEs, setVisibleUEs, s2Grades, absences, stats, history, onModuleClick, onAbsenceUpdate, onHistoryUpdate }: NotesViewProps) => {
+  const [search, setSearch] = useState('');
 
-        <TargetSimulator />
+  return (
+    <div className="space-y-6 page-enter">
+      <SemesterSelector current={semester} onChange={setSemester} />
 
-        {visibleUEs[21] && <UESection title="UE21 - Concevoir" ueKey="coef21" avg={stats.avg21} modules={MODULES_CONFIG_S2} gradesMap={s2Grades} absences={absences} onModuleClick={onModuleClick} onAbsenceUpdate={onAbsenceUpdate} />}
-        {visibleUEs[22] && <UESection title="UE22 - Vérifier" ueKey="coef22" avg={stats.avg22} modules={MODULES_CONFIG_S2} gradesMap={s2Grades} absences={absences} onModuleClick={onModuleClick} onAbsenceUpdate={onAbsenceUpdate} />}
-      </div>
-    ) : (
-      <div className="space-y-4">
-        <div className="fintech-card p-8 border border-foreground/5 text-center">
-          <div className="w-16 h-16 bg-foreground/5 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Archive size={32} className="text-muted-foreground" />
+      {semester === 2 ? (
+        <div className="space-y-6">
+          {/* Absence Alert */}
+          <AbsenceAlert absences={absences} />
+
+          {/* UE Toggles + Export */}
+          <div className="flex gap-2 mb-2">
+            <button
+              onClick={() => setVisibleUEs({ ...visibleUEs, 21: !visibleUEs[21] })}
+              className={`flex-1 py-3 rounded-xl text-xs font-bold border transition-all ${
+                visibleUEs[21] ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20' : 'bg-card text-muted-foreground border-border'
+              }`}
+            >
+              UE21 • Concevoir
+            </button>
+            <button
+              onClick={() => setVisibleUEs({ ...visibleUEs, 22: !visibleUEs[22] })}
+              className={`flex-1 py-3 rounded-xl text-xs font-bold border transition-all ${
+                visibleUEs[22] ? 'bg-foreground text-background border-foreground shadow-lg' : 'bg-card text-muted-foreground border-border'
+              }`}
+            >
+              UE22 • Vérifier
+            </button>
           </div>
-          <h3 className="font-bold text-xl mb-2">Historique S{semester}</h3>
-          <p className="text-sm text-muted-foreground mb-6">Saisissez vos moyennes validées.</p>
-          <div className="space-y-4">
-            {['1', '2'].map(ue => {
-              const key = `ue${semester}${ue}`;
-              return (
-                <div key={key} className="fintech-card p-5 border border-foreground/5 flex justify-between items-center">
-                  <span className="font-bold text-sm text-muted-foreground">Moyenne UE{semester}{ue}</span>
-                  <input
-                    type="number"
-                    value={history[`s${semester}`]?.[key] || ''}
-                    onChange={e => onHistoryUpdate(semester, key, e.target.value)}
-                    className="w-20 bg-background/50 border border-foreground/10 rounded-lg p-2.5 text-center font-mono font-bold focus:border-primary outline-none"
-                    placeholder="--"
-                  />
-                </div>
-              );
-            })}
+
+          <div className="flex gap-2 items-center">
+            <div className="flex-1 relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Rechercher un module..."
+                className="w-full bg-card border border-foreground/5 rounded-xl pl-9 pr-3 py-2.5 text-xs outline-none placeholder-foreground/20"
+              />
+            </div>
+            <GradeExport gradesMap={s2Grades} stats={{ avg21: stats.avg21, avg22: stats.avg22, global: stats.global || null }} />
+          </div>
+
+          <TargetSimulator />
+
+          <GPACalculator currentAvg={stats.global || null} history={history} />
+
+          {visibleUEs[21] && <UESection title="UE21 - Concevoir" ueKey="coef21" avg={stats.avg21} modules={MODULES_CONFIG_S2} gradesMap={s2Grades} absences={absences} onModuleClick={onModuleClick} onAbsenceUpdate={onAbsenceUpdate} search={search} />}
+          {visibleUEs[22] && <UESection title="UE22 - Vérifier" ueKey="coef22" avg={stats.avg22} modules={MODULES_CONFIG_S2} gradesMap={s2Grades} absences={absences} onModuleClick={onModuleClick} onAbsenceUpdate={onAbsenceUpdate} search={search} />}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="fintech-card p-8 border border-foreground/5 text-center">
+            <div className="w-16 h-16 bg-foreground/5 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Archive size={32} className="text-muted-foreground" />
+            </div>
+            <h3 className="font-bold text-xl mb-2">Historique S{semester}</h3>
+            <p className="text-sm text-muted-foreground mb-6">Saisissez vos moyennes validées.</p>
+            <div className="space-y-4">
+              {['1', '2'].map(ue => {
+                const key = `ue${semester}${ue}`;
+                return (
+                  <div key={key} className="fintech-card p-5 border border-foreground/5 flex justify-between items-center">
+                    <span className="font-bold text-sm text-muted-foreground">Moyenne UE{semester}{ue}</span>
+                    <input
+                      type="number"
+                      value={history[`s${semester}`]?.[key] || ''}
+                      onChange={e => onHistoryUpdate(semester, key, e.target.value)}
+                      className="w-20 bg-background/50 border border-foreground/10 rounded-lg p-2.5 text-center font-mono font-bold focus:border-primary outline-none"
+                      placeholder="--"
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
-    )}
-  </div>
-);
+      )}
+    </div>
+  );
+};
 
 export default NotesView;
