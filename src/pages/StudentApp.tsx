@@ -140,19 +140,15 @@ const StudentApp = () => {
     const fetchSchedule = async () => {
       let text = "";
       let success = false;
-      const proxies = [
-        'https://corsproxy.io/?' + encodeURIComponent(profile.adeUrl),
-        'https://api.allorigins.win/raw?url=' + encodeURIComponent(profile.adeUrl),
-      ];
-      for (const url of proxies) {
-        try {
-          const res = await fetch(url);
-          if (res.ok) {
-            text = await res.text();
-            if (text.includes("BEGIN:VCALENDAR")) { success = true; break; }
-          }
-        } catch { /* continue */ }
-      }
+      try {
+        const { data, error } = await supabase.functions.invoke('fetch-ical', {
+          body: { url: profile.adeUrl },
+        });
+        if (!error && data?.data && data.data.includes("BEGIN:VCALENDAR")) {
+          text = data.data;
+          success = true;
+        }
+      } catch { /* fallback to demo */ }
       if (!success) text = generateDemoSchedule();
       setAllEvents(parseICS(text).sort((a, b) => a.start.getTime() - b.start.getTime()));
     };
